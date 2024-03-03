@@ -3,6 +3,7 @@ from image_tokenization import ImageTokenizer
 from PIL import Image
 import numpy as np
 import os
+
 class TestImageTokenizer(unittest.TestCase):
 
     @classmethod
