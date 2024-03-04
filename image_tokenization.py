@@ -25,7 +25,6 @@ class ImageTokenizer:
         self.model_dimension = model_dimension # hyper parameter based on the dimension of the model you choose
         self.image_dimensions = (image_dimension, image_dimension)
         self.background_color = background_color
-        self.bias = bias
         self.interpolation_method = interpolation_method
 
         self.num_patches = (self.image_dimensions[0] // self.patch_size) ** 2 
@@ -33,7 +32,7 @@ class ImageTokenizer:
         # Calculate the flattened patch vector size
         self.patch_vector_size = (patch_size ** 2) * 3  # 3 is for the RGB channels
 
-        # Initialize the projection matrix and bias
+        # Initialize the projection matrix and bias. These would typically be learnable parameters in a real model, but for simplicity we'll initialize them randomly. Ideally with TensorFlow/PyTorch you would use their built-in initialization methods. They essentially serve as the weights and biases of the linear layer that projects the patch into the model's dimensionality.
         self.projection_matrix = np.random.randn(self.patch_vector_size, model_dimension).astype(np.float32)
         self.bias = np.random.randn(model_dimension).astype(np.float32)
         
@@ -41,27 +40,10 @@ class ImageTokenizer:
         # Typically the class token is a learnable parameter, but for simplicity and to keep our code "framework agnostic", we'll initialize it as a zero vector.
         self.class_token_vector = np.zeros((1, model_dimension))
 
-    # d-dimensional vector that contains information on the position of the patch in the image.
-    def generate_positional_encodings(self):
 
-        # Each row is a patch and each column is a dimension.
-        positional_encodings = np.zeros((self.num_patches, self.model_dimension))
 
-        # We take each row from 0 -> num_patches - 1 and then make it into a column vector so that it can be added to the patch embedding via broadcasting.
-        position = np.arange(0, self.num_patches, dtype=np.float32)[:, np.newaxis]
 
-        # Controls frequency scaling across dimensions for smooth positional encoding
-        div_term = np.exp(np.arange(0, self.model_dimension, 2, dtype=np.float32) * -(np.log(10_000.0) / self.model_dimension))
-
-        # The even indices of the positional encodings are updated with the sin of the position multiplied by the div_term.
-        positional_encodings[:, 0::2] = np.sin(position * div_term)
-
-        # Same as above but for the odd indices.
-        positional_encodings[:, 1::2] = np.cos(position * div_term)
-        return positional_encodings
-
-    
-
+    # This is the 'main' method in the class. It processes all the images in the directory and returns a list of image encodings. The image encodings are the input to the transformer model. 
     def process_images(self):
         all_image_encodings = []
 
@@ -84,12 +66,35 @@ class ImageTokenizer:
 
             # Attach the fixed class token to the beginning of the sequence of patch vectors as this will serve as a special "first token" that will be used to aggregate information from the patches. Here we are using a simple zero vector as the class token, but in practice you would use TensorFlow/PyTorch to create a learnable parameter. However, for simplicity and to keep our code framework agnostic, it's just a zero vector.
             image_encoding = np.vstack([self.class_token_vector, img_patches_vecs])
-            
+
             # Append the image encoding to the list of all image encodings
             all_image_encodings.append(image_encoding)
 
         return all_image_encodings
 
+
+
+    # d-dimensional vector that contains information on the position of the patch in the image.
+    def generate_positional_encodings(self):
+
+        # Each row is a patch and each column is a dimension.
+        positional_encodings = np.zeros((self.num_patches, self.model_dimension))
+
+        # We take each row from 0 -> num_patches - 1 and then make it into a column vector so that it can be added to the patch embedding via broadcasting.
+        position = np.arange(0, self.num_patches, dtype=np.float32)[:, np.newaxis]
+
+        # Controls frequency scaling across dimensions for smooth positional encoding. At the bottom of the file I have a visualization of the div_term and show how it behaves as the dimension increases. The div_term is used as a form of scaling factor for the positional encoding.
+        div_term = np.exp(np.arange(0, self.model_dimension, 2, dtype=np.float32) * -(np.log(10_000.0) / self.model_dimension))
+
+        # The even indices of the positional encodings are updated with the sin of the position multiplied by the div_term.
+        positional_encodings[:, 0::2] = np.sin(position * div_term)
+
+        # Same as above but for the odd indices.
+        positional_encodings[:, 1::2] = np.cos(position * div_term)
+        return positional_encodings
+
+    
+    
 
     
     def size_standardizer(self, img):
@@ -141,6 +146,13 @@ class ImageTokenizer:
 #%%
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+
+"""
+Below is a visualization of the div_term. The div_term is a d-dimensional vector that contains information on the position of the patch in the image. It controls frequency scaling across dimensions for smooth positional encoding. The even indices of the positional encodings are updated with the sin of the position multiplied by the div_term. The odd indices are updated with the cos of the position multiplied by the div_term.
+
+"""
 
 model_dimension = 16
 div_term = np.exp(np.arange(0, model_dimension, 2, dtype=np.float32) * -(np.log(10000.0) / model_dimension))
