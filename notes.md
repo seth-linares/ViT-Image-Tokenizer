@@ -70,15 +70,15 @@ As explained above, transformers do not have any inductive biases, and therefore
 
 ### Example Positional Encoding
 $\begin{bmatrix}
-    0.2 & 0.5 & 0.1 & 0.8 \\
-    0.9 & 0.6 & 0.3 & 0.4 \\
+    0.2 & 0.5 & 0.1 & 0.8 \\\
+    0.9 & 0.6 & 0.3 & 0.4 \\\
     0.5 & 0.1 & 0.7 & 0.2 
 \end{bmatrix}$
 
 
 ### Making a Row Vector a Column Vector
 
-$\begin{bmatrix} 0.2 \end{bmatrix} \xrightarrow{[:, np.newaxis]}  \begin{bmatrix} 0.2 \\ 0.5 \\ 0.1 \\ 0.8 \end{bmatrix}$
+$\begin{bmatrix} 0.2 \end{bmatrix} \xrightarrow{[:, np.newaxis]}  \begin{bmatrix} 0.2 \\\ 0.5 \\\ 0.1 \\\ 0.8 \end{bmatrix}$
 
 
 ## How Broadcasting Works Once We Have a Column Vector
