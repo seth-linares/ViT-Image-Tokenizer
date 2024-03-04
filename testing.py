@@ -12,6 +12,7 @@ class TestImageTokenizer(unittest.TestCase):
         cls.test_dir = r"C:\Users\sethl\Desktop"
         cls.image_dimension = 224
         cls.patch_size = 32
+        cls.model_dimensions = 512
 
     def test_size_standardizer(self):
         tokenizer = ImageTokenizer(self.test_dir, self.patch_size, self.image_dimension)
@@ -35,12 +36,13 @@ class TestImageTokenizer(unittest.TestCase):
             self.assertEqual(patch.size, (self.patch_size, self.patch_size), "Patch dimensions are incorrect.")
 
     def test_patch_to_vec(self):
-        tokenizer = ImageTokenizer(self.test_dir, self.patch_size, self.image_dimension)
+        tokenizer = ImageTokenizer(self.test_dir, self.patch_size, self.model_dimensions, self.image_dimension)
         patch = Image.new("RGB", (self.patch_size, self.patch_size), "red")
         patch_vec = tokenizer.patch_to_vec(patch)
-        
-        expected_vec_length = self.patch_size * self.patch_size * 3 
-        self.assertEqual(len(patch_vec), expected_vec_length, "Vectorized patch length is incorrect.")
+    
+        expected_vec_length = self.model_dimensions 
+        self.assertEqual(len(patch_vec), expected_vec_length, "Projected vector length is incorrect.")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,18 +28,6 @@ I believe that this project has served as a great learning experience and has gi
 
 
 
-<!-- ## Image Encoding (tokenization) for Vision Transformers (ViTs) -->
-
-
-
-
-
-
-
-
-
-
-
 
 # Important Concepts
 

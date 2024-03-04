@@ -31,7 +31,7 @@ class ImageTokenizer:
         self.num_patches = (self.image_dimensions[0] // self.patch_size) ** 2 
 
         # Calculate the flattened patch vector size
-        self.patch_vector_size = (patch_size ** 2) * 3  # Assuming 3 channels (RGB)
+        self.patch_vector_size = (patch_size ** 2) * 3  # 3 is for the RGB channels
 
         # Initialize the projection matrix and bias
         self.projection_matrix = np.random.randn(self.patch_vector_size, model_dimension).astype(np.float32)
@@ -71,16 +71,21 @@ class ImageTokenizer:
             standardized_img = self.size_standardizer(img)
             patches = self.image_to_patch(standardized_img)
 
-            pos_encodings = self.generate_positional_encodings(len(patches))
+            pos_encodings = self.generate_positional_encodings()
 
+            # For each patch, we flatten it and then project it into the model's dimensionality. We then add the positional encoding to the projected patch vector.
             for idx, patch in enumerate(patches):
-                # Ensure this projects to model_dimension
+                # Flatten the patch
                 patch_vec = self.patch_to_vec(patch)  
+                # Add positional encoding to the patch vector
                 patch_vec += pos_encodings[idx]
+                # Append the patch vector to the list of patch vectors
                 img_patches_vecs.append(patch_vec)
 
-            # Prepend the fixed class token to the sequence of patch vectors
-            image_encoding = np.vstack([self.class_token, img_patches_vecs])
+            # Attach the fixed class token to the beginning of the sequence of patch vectors as this will serve as a special "first token" that will be used to aggregate information from the patches. Here we are using a simple zero vector as the class token, but in practice you would use TensorFlow/PyTorch to create a learnable parameter. However, for simplicity and to keep our code framework agnostic, it's just a zero vector.
+            image_encoding = np.vstack([self.class_token_vector, img_patches_vecs])
+            
+            # Append the image encoding to the list of all image encodings
             all_image_encodings.append(image_encoding)
 
         return all_image_encodings
@@ -88,7 +93,8 @@ class ImageTokenizer:
 
     
     def size_standardizer(self, img):
-        change_factor = min(self.image_dimensions[0] / img.size[0], self.image_dimensions[1] / img.size[1])
+        # Resizes the image to the specified dimensions while maintaining the aspect ratio
+        change_factor = min(self.image_dimensions[0] / img.size[0], self.image_dimensions[1] / img.size[1]) # Takes larger dimension and scales it down to meet the target dimension
         new_image_dimension = (int(img.size[0] * change_factor), int(img.size[1] * change_factor))
         img = img.resize(new_image_dimension, self.interpolation_method)
 
@@ -101,17 +107,20 @@ class ImageTokenizer:
 
     
     def image_to_patch(self, image: Image):
+        # List to collect the patches we make from our image
         patches = []
-        
+        # Ensuring that the image is padded to allow for even division into patches
         pad_width = (self.patch_size - (image.size[0] % self.patch_size)) % self.patch_size
         pad_height = (self.patch_size - (image.size[1] % self.patch_size)) % self.patch_size
         
+        # If the image is not already the correct size, we pad it with the background color
         if pad_width > 0 or pad_height > 0:
             padded_image = Image.new("RGB", (image.size[0] + pad_width, image.size[1] + pad_height), self.background_color)
             padded_image.paste(image, (0, 0))
         else:
             padded_image = image
         
+        # Goes through the image in patch_size increments and crops out the patch
         for i in range(0, padded_image.size[0], self.patch_size):
             for j in range(0, padded_image.size[1], self.patch_size):
                 patch = padded_image.crop((i, j, i + self.patch_size, j + self.patch_size))
@@ -122,9 +131,6 @@ class ImageTokenizer:
 
 
     def patch_to_vec(self, patch):
-        """
-        Projects a patch to the model dimension using the projection matrix and bias.
-        """
         # Flatten the patch
         flattened_patch = np.array(patch).reshape(-1)  
         # Apply projection and bias
