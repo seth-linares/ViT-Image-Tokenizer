@@ -85,8 +85,8 @@ $\begin{bmatrix} 0.2 \end{bmatrix} \xrightarrow{[:, np.newaxis]}  \begin{bmatrix
 
 ### Example Positional Encoding (Column Vector)
 $\begin{bmatrix}
-    0.5 \\
-    0.1 \\
+    0.5 \\\
+    0.1 \\\
     0.2 
 \end{bmatrix}$
 
@@ -98,27 +98,27 @@ $\begin{bmatrix}
 ### Preparing the Positional Encoding for Broadcasting
 
 $\begin{bmatrix}
-    0.5 & 0.5 & 0.5 \\
-    0.1 & 0.1 & 0.1 \\
+    0.5 & 0.5 & 0.5 \\\
+    0.1 & 0.1 & 0.1 \\\
     0.2 & 0.2 & 0.2
 \end{bmatrix}$
 
 ### Now We Can Add the Patch Embedding to the Positional Encoding
 $\begin{bmatrix}
-    0.5 & 0.5 & 0.5 \\
-    0.1 & 0.1 & 0.1 \\
+    0.5 & 0.5 & 0.5 \\\
+    0.1 & 0.1 & 0.1 \\\
     0.2 & 0.2 & 0.2 
 \end{bmatrix} 
 +
 \begin{bmatrix}
-    1.2 & 0.8 & 0.7 \\
-    0.6 & 0.1 & 1.1 \\
+    1.2 & 0.8 & 0.7 \\\
+    0.6 & 0.1 & 1.1 \\\
     0.3 & 0.9 & 0.2 
 \end{bmatrix} 
 \approx 
 \begin{bmatrix}
-    1.7 & 1.3 & 1.2 \\
-    0.7 & 0.2 & 1.2 \\
+    1.7 & 1.3 & 1.2 \\\
+    0.7 & 0.2 & 1.2 \\\
     0.5 & 1.1 & 0.4 
 \end{bmatrix}$ 
 
