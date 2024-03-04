@@ -57,58 +57,35 @@ As explained above, transformers do not have any inductive biases, and therefore
 
 
 ### Example Positional Encoding
-$\begin{bmatrix}
-    0.2 & 0.5 & 0.1 & 0.8 \\
-    0.9 & 0.6 & 0.3 & 0.4 \\
-    0.5 & 0.1 & 0.7 & 0.2 
-\end{bmatrix}$
+![positional_encoding](images/image_1.png)
+
 
 
 ### Making a Row Vector a Column Vector
 
-$\begin{bmatrix} 0.2 \end{bmatrix} \xrightarrow{[:, np.newaxis]}  \begin{bmatrix} 0.2 \\ 0.5 \\ 0.1 \\ 0.8 \end{bmatrix}$
+![newaxis](images/image_2.png)
+
 
 
 ## How Broadcasting Works Once We Have a Column Vector
 
 ### Example Positional Encoding (Column Vector)
-$\begin{bmatrix}
-    0.5 \\
-    0.1 \\
-    0.2 
-\end{bmatrix}$
+
+![positional_encoding_column_vector](images/image_3.png)
+
 
 ### Example Row from Patch Embedding that We Want to Add to the Positional Encoding
-$\begin{bmatrix}
-    1.2 & 0.8 & 0.7
-\end{bmatrix}$
+
+![patch_embedding](images/image_4.png)
+
 
 ### Preparing the Positional Encoding for Broadcasting
 
-$\begin{bmatrix}
-    0.5 & 0.5 & 0.5 \\
-    0.1 & 0.1 & 0.1 \\
-    0.2 & 0.2 & 0.2
-\end{bmatrix}$
+![positional_encoding_broadcasting](images/image_5.png)
 
 ### Now We Can Add the Patch Embedding to the Positional Encoding
-$\begin{bmatrix}
-    0.5 & 0.5 & 0.5 \\
-    0.1 & 0.1 & 0.1 \\
-    0.2 & 0.2 & 0.2 
-\end{bmatrix} 
-+
-\begin{bmatrix}
-    1.2 & 0.8 & 0.7 \\
-    0.6 & 0.1 & 1.1 \\
-    0.3 & 0.9 & 0.2 
-\end{bmatrix} 
-\approx 
-\begin{bmatrix}
-    1.7 & 1.3 & 1.2 \\
-    0.7 & 0.2 & 1.2 \\
-    0.5 & 1.1 & 0.4 
-\end{bmatrix}$ 
+
+![positional_encoding_addition](images/image_6.png)
 
 ### Why This Matters
 This is important because it allows us to add the positional encoding to the patch embeddings without having to worry about the dimensions of the positional encoding. This is because the positional encoding is broadcasted to the same shape as the patch embeddings, and then added to the patch embeddings. This is a very efficient way to add positional encodings to the patch embeddings, and is a key part of the ViT model.
