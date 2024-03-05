@@ -50,8 +50,7 @@ where:
 
 ### Why We Need Positional Encodings
 
-As explained above, transformers do not have any inductive biases, and therefore do not make any assumptions about the spatial relationships. The data is processed in parallel, and the model does not have any information about the order of the data. This is why we need positional encodings. They are added to the patch embeddings to give the model information about the order of the patches. This is important because the model needs to know the order of the patches in order to capture the spatial relationships between them.
-
+As explained above, transformers do not have any inductive biases, and therefore do not make any assumptions about the spatial relationships. When we feed the patches into the transformer, the model does not have any information about their order. By adding positional encodings to the patch embeddings, we provide the model the information it needs to capture how each patch relates to one another.
 
 ## Example of Using newaxis to Convert a Row Vector to a Column Vector
 
