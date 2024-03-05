@@ -150,7 +150,10 @@ import numpy as np
 
 
 """
-Below is a visualization of the div_term. The div_term is a d-dimensional vector that contains information on the position of the patch in the image. It controls frequency scaling across dimensions for smooth positional encoding. The even indices of the positional encodings are updated with the sin of the position multiplied by the div_term. The odd indices are updated with the cos of the position multiplied by the div_term.
+Below is a visualization of the div_term. The div_term is a d-dimensional vector that contains information on the position of the patch in the image. 
+It controls frequency scaling across dimensions for smooth positional encoding. 
+The even indices of the positional encodings are updated with the sin of the position multiplied by the div_term. 
+The odd indices are updated with the cos of the position multiplied by the div_term.
 
 """
 
