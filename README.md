@@ -97,7 +97,7 @@ where:
 
 I would recommend looking into linear projections and how they work in the context of transformers if you are interested in learning more about this. Here is a great resource that I found to be very helpful: [Linear Layer](https://serp.ai/linear-layer/).
 
-## Example of Using newaxis to Convert a Row Vector to a Column Vector
+## Example of Using Broadcasting in Deep Learning
 
 
 ### Example Positional Encoding
@@ -132,9 +132,7 @@ I would recommend looking into linear projections and how they work in the conte
 ![positional_encoding_addition](images/image_6.png)
 
 ### Why This Matters
-This is important because it allows us to add the positional encoding to the patch embeddings without having to worry about the dimensions of the positional encoding. This is because the positional encoding is broadcasted to the same shape as the patch embeddings, and then added to the patch embeddings. This is a very efficient way to add positional encodings to the patch embeddings, and is a key part of the ViT model.
-
-
+This is a very simple example of broadcasting, but it is a key concept in how we can deal with and manipulate tensors of different shapes. Usually, you will see this come up in things like the linear layer with the bias vector $b$ being broadcasted to the shape of $XW$ so that we can add it to the output of the linear layer. So, I felt it was important to include this as a key concept that comes up relatively often in deep learning contexts. Hopefully this example was illustrative of the main idea in case you need to use it in your own implementations.
 
 # References
 - [An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)
