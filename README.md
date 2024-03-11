@@ -111,8 +111,6 @@ I would recommend looking into linear projections and how they work in the conte
 
 
 
-## How Broadcasting Works Once We Have a Column Vector
-
 ### Example Positional Encoding (Column Vector)
 
 ![positional_encoding_column_vector](images/image_3.png)
