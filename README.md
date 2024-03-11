@@ -84,7 +84,7 @@ There are other ways to generate positional encodings, such as using learnable p
 
 ## Linear Projections
 
-This is something that is hugely important in the context of ViTs and transformers in general. When we have some input data that we want to feed into a transformer, we need to project it into the model's dimension space. This is relevant for the encoder/tokenizer because we need to project the patches into the model's dimension space before we can add the positional encodings to them. But this is also crucial for attention mechanisms in general, as we need to take our content embeddings (patch embeddings + positional encodings + class token (CLS)) and project them into the query, key, and value spaces. This is a key part of how attention mechanisms work, and is a key part of the transformer model.
+Linear projections are hugely important in the context of ViTs and transformers in general. When we have some input data that we want to feed into a transformer, we need to project it into the model's dimension space. This is relevant for the encoder/tokenizer because we need to project the patches into the model's dimension space before we can add the positional encodings to them. But this is also crucial for attention mechanisms in general, as we need to take our content embeddings (patch embeddings + positional encodings + class token (CLS)) and project them into the query, key, and value spaces. This is a key part of how attention mechanisms work, and is a key part of the transformer model.
 
 This is the general formula for a linear projection:
 $Y = XW + b$
