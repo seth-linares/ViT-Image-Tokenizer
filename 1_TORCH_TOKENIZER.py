@@ -24,8 +24,10 @@ class ImageTokenizer(Dataset):
         self.num_patches = (image_dimension // patch_size) ** 2
 
         
-
+        # The wave length is a hyperparameter that determines the scale of the positional encodings. It is typically set to 10,000, but you can experiment with different values. I decided to stick with the default value of 10,000 since the original paper used that value and I have no reason to change it, but you might find that a different value works better for your specific use case.
         self.wave_length = wave_length
+
+
         self.positional_encodings = self.generate_positional_encodings()
 
         # Torch component initiaization below this point:
