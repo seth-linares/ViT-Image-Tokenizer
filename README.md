@@ -33,6 +33,18 @@ I believe that this project has served as a great learning experience and has gi
 
 - **2_GENERAL_TOKENIZER.py**: This file contains the code for the general tokenizer that I originally created. This is a more basic version of the image encoder/tokenizer that is designed to work with either TF or PyTorch. It is not as advanced or fleshed out as the PyTorch tokenizer, but it does give a high-level overview of how tokenization works and how we can build a tokenizer from scratch. This is a great starting point for anyone who is interested in learning about tokenization and how to build a tokenizer from scratch. I would recommend starting here if you are new to encoding and transformers as this does give the basic workflow and concepts that are used in the PyTorch tokenizer, but in a more general context and not abstracted away by PyTorch. 
 
+- **test.py**: I added in a unit test showcasing that my method for calculating the denominator in the positional encoding is functionally equivalent to that of the typical exponential method using euler's number. This was something that I was confused about when I first started figuring out how to implement the positional encodings as I kept seeing some weird math for the calculations that I didn't initially grasp. Once I learned what the code meant I rewrote it in a more intuitive way from this:
+
+```python
+div_term = torch.exp(torch.arange(0, d_model, 2) * -(np.log(10000.0) / d_model))
+```
+
+to this:
+
+```python   
+div_term = 1 / (self.wave_length ** (torch.arange(0, self.model_dimension, 2, dtype=torch.float32) / self.model_dimension))
+```
+
 
 
 # Important Concepts
