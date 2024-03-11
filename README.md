@@ -27,6 +27,12 @@ As someone who has worked with CNNs, the idea of using transformers for vision t
 I believe that this project has served as a great learning experience and has given me some deeper insights into transformers and how I can use them in my own projects. Admittedly, this project is more of an exploration rather than a definitive and efficient solution for encoding and tokenization, and should be taken as such. Resources are actually quite scarce for newcomers to the field, so I believe that this project will serve as a great starting point for anyone who is interested in learning about ViTs and transformers in general.
 
 
+## Files Provided
+
+- **1_TORCH_TOKENIZER.py**: This file contains the code for the image encoder/tokenizer. This is essentially a more advanced version of the general tokenizer that I originally created. This is explicitly designed to work with PyTorch and is very capable of being used in conjunction with a data loader to load in and preprocess images for use in a ViT model. While it is not cross-compatible with TensorFlow, the concepts and ideas can be easily translated to TensorFlow and PyTorch does have a lot of great resources for working with transformers.
+
+- **2_GENERAL_TOKENIZER.py**: This file contains the code for the general tokenizer that I originally created. This is a more basic version of the image encoder/tokenizer that is designed to work with any type of data. It is not as advanced as the PyTorch tokenizer, but it is more general and can be used with any type of data. This is a great starting point for anyone who is interested in learning about tokenization and how to build a tokenizer from scratch. I would recommend starting here if you are new to tokenization and transformers as this does give the basic workflow and concepts that are used in the PyTorch tokenizer, but in a more general context and not abstracted away by PyTorch.
+
 
 
 # Important Concepts
@@ -44,13 +50,34 @@ $PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right)$
 where:
 
 *   $pos$ is the position of the patch in the sequence.
+*   $10,000$ is the base and controls the frequency of the oscillation for the positional encoding (This is a hyperparameter that can be tuned, but is typically set to $10,000$).
 *   $i$ is the current dimension.
 *   $d_{\text{model}}$ is the total number of dimensions in the positional encoding (in this context, it would be the dimensionality you project your patch vectors to).
 *   This results in a unique positional encoding for each position and dimension.
 
+I think it is extremely important to explain that for $i$, when it says $2i$, what that is actually saying is that we only need to look at the even dimensions in our exponent. When we go to fill in the positional encoding using our formula, we will use sin for the even indices (the column indices represent the dimensions of the positional encoding) and cos for the odd indices. One important reason for this is that the sin and cos functions are orthogonal to each other. This method of encoding allows the model to better distinguish between different positions within the sequence. 
+
+There are other ways to generate positional encodings, such as using learnable parameters, but the sinusoidal positional encodings are the most common and are used in the original transformer paper, so I used them in my implementation and think they are a great starting point for anyone who is new to positional encodings. I would definitely recommend reading more into this specific implementation of positional encodings since it is really clever but also a bit complex. Here is a site I used to figure out how to implement this: [Transformer Architecture: The Positional Encoding](https://kazemnejad.com/blog/transformer_architecture_positional_encoding/)
+
 ### Why We Need Positional Encodings
 
 As explained above, transformers do not have any inductive biases, and therefore do not make any assumptions about the spatial relationships. When we feed the patches into the transformer, the model does not have any information about their order. By adding positional encodings to the patch embeddings, we provide the model the information it needs to capture how each patch relates to one another.
+
+
+## Linear Projections
+
+This is something that is hugely important in the context of ViTs and transformers in general. When we have some input data that we want to feed into a transformer, we need to project it into the model's dimension space. This is relevant for the encoder/tokenizer because we need to project the patches into the model's dimension space before we can add the positional encodings to them. But this is also crucial for attention mechanisms in general, as we need to take our content embeddings (patch embeddings + positional encodings + class token (CLS)) and project them into the query, key, and value spaces. This is a key part of how attention mechanisms work, and is a key part of the transformer model.
+
+This is the general formula for a linear projection:
+$Y = XW + b$
+
+where:
+*   $X$ is the input vector.
+*   $W$ is the weight matrix.
+*   $b$ is the bias vector.
+*   $Y$ is the output vector.
+
+I would recommend looking into linear projections and how they work in the context of transformers if you are interested in learning more about this. Here is a great resource that I found to be very helpful: [Linear Layer](https://serp.ai/linear-layer/).
 
 ## Example of Using newaxis to Convert a Row Vector to a Column Vector
 
@@ -96,3 +123,5 @@ This is important because it allows us to add the positional encoding to the pat
 - [Vision Transformer (ViT) - An Image is Worth 16x16 Words](https://www.youtube.com/watch?v=TrdevFK_am4)
 - [Let's build the GPT Tokenizer](https://youtu.be/zduSFxRajkE?si=qWtUIN_Q-2aRUzNG)
 - [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/)
+- [Linear Layer](https://serp.ai/linear-layer/)
+- [Transformer Architecture: The Positional Encoding](https://kazemnejad.com/blog/transformer_architecture_positional_encoding/)
