@@ -100,30 +100,18 @@ I would recommend looking into linear projections and how they work in the conte
 ## Example of Using Broadcasting in Deep Learning
 
 
-### Example Positional Encoding
-![positional_encoding](images/image_1.png)
-
-
-
-### Making a Row Vector a Column Vector
-
-![newaxis](images/image_2.png)
-
-
-
 ### Example Positional Encoding (Column Vector)
 
 ![positional_encoding_column_vector](images/image_3.png)
 
-
-### Example Row from Patch Embedding that We Want to Add to the Positional Encoding
-
-![patch_embedding](images/image_4.png)
+$3 \times 1$ column vector.
 
 
 ### Preparing the Positional Encoding for Broadcasting
 
 ![positional_encoding_broadcasting](images/image_5.png)
+
+We change the shape of the positional encoding to match the shape of the patch embedding so that we can add them together. This only works if at least one of the dimensions is 1. Here we specifically take the column vector and duplicate it 2 more times to match the shape of $3 \times 3$
 
 ### Now We Can Add the Patch Embedding to the Positional Encoding
 
