@@ -67,13 +67,17 @@ where:
 *   $d_{\text{model}}$ is the total number of dimensions in the positional encoding (in this context, it would be the dimensionality you project your patch vectors to).
 *   This results in a unique positional encoding for each position and dimension.
 
+### Why We Need Positional Encodings
+
+As explained above, transformers do not have any inductive biases, and therefore do not make any assumptions about the spatial relationships. When we feed the patches into the transformer, the model does not have any information about their order. By adding positional encodings to the patch embeddings, we provide the model the information it needs to capture how each patch relates to one another.
+
+### Clarifications
+
 I think it is extremely important to explain that for $i$, when it says $2i$, what that is actually saying is that we only need to look at the even dimensions in our exponent. When we go to fill in the positional encoding using our formula, we will use sin for the even indices (the column indices represent the dimensions of the positional encoding) and cos for the odd indices. One important reason for this is that the sin and cos functions are orthogonal to each other. This method of encoding allows the model to better distinguish between different positions within the sequence. 
 
 There are other ways to generate positional encodings, such as using learnable parameters, but the sinusoidal positional encodings are the most common and are used in the original transformer paper, so I used them in my implementation and think they are a great starting point for anyone who is new to positional encodings. I would definitely recommend reading more into this specific implementation of positional encodings since it is really clever but also a bit complex. Here is a site I used to figure out how to implement this: [Transformer Architecture: The Positional Encoding](https://kazemnejad.com/blog/transformer_architecture_positional_encoding/)
 
-### Why We Need Positional Encodings
 
-As explained above, transformers do not have any inductive biases, and therefore do not make any assumptions about the spatial relationships. When we feed the patches into the transformer, the model does not have any information about their order. By adding positional encodings to the patch embeddings, we provide the model the information it needs to capture how each patch relates to one another.
 
 
 ## Linear Projections
