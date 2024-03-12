@@ -7,7 +7,7 @@ Transformers have been widely used in NLP tasks, and have shown to be very effec
 - **Gemini**
 - **Claude**
     
-Despite their success and dominance in NLP, they have not been used in vision tasks until recently. Vision Transformers (ViTs) are a relatively newer class of models that use transformers for vision tasks. They have shown to be very effective in image classification tasks, and have been shown to **outperform CNNs** in some cases.
+Despite their success and dominance in NLP, they have not been used in vision tasks until recently. Vision Transformers, ViTs for short, are a relatively newer class of models that use the transformer architecture for vision tasks. They have been shown to be very effective in image classification tasks, and have been shown to **outperform CNNs** in some cases.
 
 Typically, in vision tasks, attention mechanisms are used to capture the relationships between pixels in an image. This is done by using convolutional layers in CNNs. However, ViTs use transformers to capture these relationships, and have shown to be very effective in tasks such as image classification.
 
