@@ -7,11 +7,11 @@ Transformers have been widely used in NLP tasks, and have shown to be very effec
 - **Gemini**
 - **Claude**
     
-Despite the success of transformers in natural language processing (NLP), their application to computer vision is recent. Vision Transformers (ViTs) adapt the transformer architecture for image-based tasks and have demonstrated impressive results – sometimes even outperforming traditional Convolutional Neural Networks (CNNs).
+Despite the success of transformers in natural language processing (NLP), their application to computer vision is recent. Vision Transformers (ViTs) adapt the transformer architecture for image-based tasks and have demonstrated impressive results, sometimes even outperforming traditional Convolutional Neural Networks (CNNs).
 
 Unlike CNNs, which use convolutional layers to analyze image regions, ViTs rely on transformers to model relationships between any part of an image. This flexibility makes them powerful for tasks like image classification.
 
-The main trade-off with ViTs lies in their data-hungry nature. CNNs have inherent 'inductive biases' that prioritize understanding the relationships between nearby pixels – an assumption well-suited to images. This allows CNNs to work well with less training data.
+The main trade-off with ViTs lies in their data-hungry nature. CNNs have inherent 'inductive biases' that prioritize understanding the relationships between nearby pixels, an assumption well-suited to images. This allows CNNs to work well with less training data.
 
 Transformers lack this built-in assumption about image structure. However, researchers have discovered that massive amounts of training data can compensate for this limitation. Once trained on large datasets, ViTs can often generalize their knowledge to new tasks with less additional data than CNNs.
 
