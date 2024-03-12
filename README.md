@@ -7,15 +7,13 @@ Transformers have been widely used in NLP tasks, and have shown to be very effec
 - **Gemini**
 - **Claude**
     
-Despite their success and dominance in NLP, they have not been used in vision tasks until recently. Vision Transformers, ViTs for short, are a relatively newer class of models that use the transformer architecture for vision tasks. They have been shown to be very effective in image classification tasks, and have been shown to **outperform CNNs** in some cases.
+Despite the success of transformers in natural language processing (NLP), their application to computer vision is recent. Vision Transformers (ViTs) adapt the transformer architecture for image-based tasks and have demonstrated impressive results – sometimes even outperforming traditional Convolutional Neural Networks (CNNs).
 
-Typically, in vision tasks, attention mechanisms are used to capture the relationships between pixels in an image. This is done by using convolutional layers in CNNs. However, ViTs use transformers to capture these relationships, and have shown to be very effective in tasks such as image classification.
+Unlike CNNs, which use convolutional layers to analyze image regions, ViTs rely on transformers to model relationships between any part of an image. This flexibility makes them powerful for tasks like image classification.
 
-The main drawback of ViTs when compared to CNNs is that they require a lot of training data to perform well. This inherent flaw stems from the fact that transformers **do not** have the **"inductive biases"** native to CNNs.
+The main trade-off with ViTs lies in their data-hungry nature. CNNs have inherent 'inductive biases' that prioritize understanding the relationships between nearby pixels – an assumption well-suited to images. This allows CNNs to work well with less training data.
 
-What does this mean? CNNs are designed to capture spatial relationships between pixels. When a CNN looks at an image, it assumes that the pixels that are close to each other are more related than pixels that are far apart. This is a very strong inductive bias, and it allows CNNs to perform well on relatively small datasets.
-
-Transformers do not have this inductive bias and therefore do not make any assumptions about the spatial relationships between pixels. What researchers have found, however, is that **"large scale training trumps inductive biases."** While the initial cost means that ViTs require a lot of data to perform well, after training, they are able to use what they learned and generalize it to new tasks with much less data.
+Transformers lack this built-in assumption about image structure. However, researchers have discovered that massive amounts of training data can compensate for this limitation. Once trained on large datasets, ViTs can often generalize their knowledge to new tasks with less additional data than CNNs.
 
 
 ## Why I Chose to Work on an Image Encoder/Tokenizer for ViTs
