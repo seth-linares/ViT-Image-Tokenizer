@@ -28,6 +28,9 @@ __all__ = [
     "plot_position_similarity",
     "plot_frequency_bands",
     "plot_encoding_curves",
+    "plot_attention_map",
+    "plot_projection_filters",
+    "plot_training_curves",
 ]
 
 
@@ -203,5 +206,131 @@ def plot_encoding_curves(
         ax.grid(alpha=0.3)
     axes[-1].set_xlabel("position $pos$")
     fig.suptitle("Encoding values across positions, selected dimension pairs")
+    fig.tight_layout()
+    return fig
+
+
+def plot_attention_map(
+    image,
+    attention: torch.Tensor,
+    patch_size: int,
+    title: str | None = None,
+) -> plt.Figure:
+    """Overlay each head's [CLS]-to-patch attention on the image.
+
+    ``attention`` is one layer's weights for one image, shape ``(H, S, S)``
+    with ``S = N + 1``. Row 0 is the [CLS] token's query; its entries over
+    columns ``1..N`` say how much each patch contributes to the image summary.
+    Those ``N`` weights are reshaped onto the patch grid, bilinearly upsampled
+    to pixel resolution, and drawn as a heatmap over the image — one panel per
+    head plus the head average.
+    """
+    array = _to_array(image)
+    height, width = array.shape[:2]
+    grid_h, grid_w = patch_grid_shape((height, width), patch_size)
+
+    attention = attention.detach()
+    if attention.dim() != 3 or attention.shape[-1] != grid_h * grid_w + 1:
+        raise ValueError(
+            f"Expected attention of shape (H, S, S) with S = {grid_h * grid_w + 1}, "
+            f"got {tuple(attention.shape)}"
+        )
+    num_heads = attention.shape[0]
+    cls_to_patches = attention[:, 0, 1:]  # (H, N): drop CLS->CLS self-weight
+    maps = torch.cat([cls_to_patches, cls_to_patches.mean(0, keepdim=True)])
+    labels = [f"head {h}" for h in range(num_heads)] + ["head average"]
+
+    columns = min(len(maps), 5)
+    rows = math.ceil(len(maps) / columns)
+    fig, axes = plt.subplots(rows, columns, figsize=(3.0 * columns, 3.2 * rows))
+    axes = np.atleast_1d(axes).flatten()
+    for ax, weights, label in zip(axes, maps, labels):
+        grid = weights.reshape(1, 1, grid_h, grid_w)
+        upsampled = torch.nn.functional.interpolate(
+            grid, size=(height, width), mode="bilinear", align_corners=False
+        )[0, 0]
+        ax.imshow(array)
+        ax.imshow(upsampled.cpu().numpy(), cmap="inferno", alpha=0.55)
+        ax.set_title(label, fontsize=9)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    for ax in axes[len(maps):]:
+        ax.axis("off")
+    fig.suptitle(title or "[CLS] → patch attention")
+    fig.tight_layout()
+    return fig
+
+
+def plot_projection_filters(
+    weight: torch.Tensor,
+    patch_size: int,
+    in_channels: int = 3,
+    num_components: int = 28,
+) -> plt.Figure:
+    """Principal components of the learned patch-projection filters.
+
+    Each of the ``d`` rows of the projection weight is a linear filter over a
+    flattened ``(C, P, P)`` patch. Following the ViT paper (figure 7), we PCA
+    the set of filters and display the leading components reshaped to patches:
+    after training they typically resemble basis functions — edges, blobs,
+    gratings — analogous to a CNN's first-layer kernels.
+    """
+    filters = weight.detach().cpu().numpy()
+    if filters.shape[1] != in_channels * patch_size * patch_size:
+        raise ValueError(
+            f"weight columns ({filters.shape[1]}) != C*P^2 "
+            f"({in_channels * patch_size * patch_size})"
+        )
+    centered = filters - filters.mean(axis=0, keepdims=True)
+    # Rows are d samples in R^{CP^2}; right singular vectors are the PCs.
+    _, _, components = np.linalg.svd(centered, full_matrices=False)
+    num_components = min(num_components, components.shape[0])
+
+    columns = 7
+    rows = math.ceil(num_components / columns)
+    fig, axes = plt.subplots(rows, columns, figsize=(1.5 * columns, 1.6 * rows))
+    axes = np.atleast_1d(axes).flatten()
+    for index, ax in enumerate(axes):
+        if index >= num_components:
+            ax.axis("off")
+            continue
+        component = components[index].reshape(in_channels, patch_size, patch_size)
+        component = np.transpose(component, (1, 2, 0))
+        low, high = component.min(), component.max()
+        ax.imshow((component - low) / (high - low + 1e-12))
+        ax.set_title(f"PC {index}", fontsize=7, pad=2)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    fig.suptitle("Principal components of the patch-projection filters")
+    fig.tight_layout()
+    return fig
+
+
+def plot_training_curves(history: dict[str, list[float]]) -> plt.Figure:
+    """Loss and accuracy curves from a training run.
+
+    ``history`` maps curve names to per-evaluation values; keys containing
+    ``"loss"`` go on the left axis (log scale), the rest on the right.
+    """
+    loss_keys = [k for k in history if "loss" in k.lower()]
+    other_keys = [k for k in history if k not in loss_keys]
+
+    fig, (ax_loss, ax_other) = plt.subplots(1, 2, figsize=(11, 4))
+    for key in loss_keys:
+        ax_loss.semilogy(history[key], label=key)
+    ax_loss.set_xlabel("evaluation step")
+    ax_loss.set_ylabel("loss (log scale)")
+    ax_loss.set_title("Loss")
+    ax_loss.grid(alpha=0.3)
+    if loss_keys:
+        ax_loss.legend()
+
+    for key in other_keys:
+        ax_other.plot(history[key], label=key)
+    ax_other.set_xlabel("evaluation step")
+    ax_other.set_title(" / ".join(other_keys) if other_keys else "metrics")
+    ax_other.grid(alpha=0.3)
+    if other_keys:
+        ax_other.legend()
     fig.tight_layout()
     return fig

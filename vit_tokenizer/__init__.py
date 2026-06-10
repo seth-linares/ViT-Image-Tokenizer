@@ -18,6 +18,7 @@ The math behind every step is derived in ``docs/MATH.md`` and verified
 numerically by the test suite in ``tests/``.
 """
 
+from .attention import MultiHeadSelfAttention
 from .dataset import (
     IMAGENET_MEAN,
     IMAGENET_STD,
@@ -29,27 +30,35 @@ from .dataset import (
     to_tensor,
 )
 from .embedding import ViTPatchEmbedding
+from .model import MiniViT, TransformerEncoderBlock
 from .patching import patch_grid_shape, patchify, unpatchify
 from .positional import (
     frequency_bands,
+    rope_rotate,
     sinusoidal_positional_encoding,
     sinusoidal_positional_encoding_2d,
 )
+from .shapes import SyntheticShapes
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "IMAGENET_MEAN",
     "IMAGENET_STD",
     "Compose",
     "ImageFolderDataset",
+    "MiniViT",
+    "MultiHeadSelfAttention",
     "Normalize",
     "ResizeAndPad",
+    "SyntheticShapes",
+    "TransformerEncoderBlock",
     "ViTPatchEmbedding",
     "default_transform",
     "frequency_bands",
     "patch_grid_shape",
     "patchify",
+    "rope_rotate",
     "sinusoidal_positional_encoding",
     "sinusoidal_positional_encoding_2d",
     "to_tensor",
