@@ -14,7 +14,10 @@ the test that checks it is cited so you can see the math run.
 6. [2-D positional encodings](#6-2-d-positional-encodings)
 7. [Xavier initialization](#7-xavier-initialization)
 8. [Input normalization](#8-input-normalization)
-9. [References](#9-references)
+9. [Scaled dot-product attention](#9-scaled-dot-product-attention)
+10. [Rotary positional embeddings (RoPE)](#10-rotary-positional-embeddings-rope)
+11. [From tokens to a working model: MiniViT](#11-from-tokens-to-a-working-model-minivit)
+12. [References](#12-references)
 
 ---
 
@@ -338,8 +341,8 @@ across the whole image. Each block being a rotation also re-proves section
 5.4: rotations preserve norms.
 (`test_positional.py::TestSinusoidalEncoding::test_relative_position_is_linear`
 constructs $R_k$ explicitly and verifies the identity over the whole table.
-Readers familiar with RoPE will recognize this rotation structure — rotary
-embeddings apply these same blocks *multiplicatively* inside attention.)
+Section 10 turns this rotation structure into a positional mechanism of its
+own — RoPE applies these same blocks *multiplicatively* inside attention.)
 
 ### 5.7 Uniqueness and the interleaving convention
 
@@ -460,7 +463,230 @@ visualization utilities use to display tensors as images.
 
 ---
 
-## 9. References
+## 9. Scaled dot-product attention
+
+What consumes the tokens. Implemented from scratch in
+[`attention.py`](../vit_tokenizer/attention.py) and pinned against
+`torch.nn.MultiheadAttention` elementwise
+(`tests/test_attention.py::TestEquivalenceWithTorch`).
+
+### 9.1 Definition
+
+Given tokens $Z \in \mathbb{R}^{S \times d}$ (here $S = N + 1$), three learned
+projections produce queries, keys, and values, and each token's output is a
+score-weighted mixture of all value vectors:
+
+$$
+Q = Z W_Q^\top,\quad K = Z W_K^\top,\quad V = Z W_V^\top, \qquad
+\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\Big(\frac{Q K^\top}{\sqrt{d_h}}\Big)\, V .
+$$
+
+The softmax is applied row-wise, so row $m$ of the attention matrix is a
+probability distribution over the $S$ tokens — "where token $m$ looks." Rows
+summing to 1 is asserted in
+`test_attention_weights_shape_and_rows_sum_to_one`.
+
+### 9.2 Why divide by $\sqrt{d_h}$
+
+Suppose the entries of $q, k \in \mathbb{R}^{d_h}$ are independent with zero
+mean and unit variance (which sections 7–8 work to make approximately true).
+Then
+
+$$
+\mathrm{Var}(q \cdot k) = \mathrm{Var}\!\Big(\sum_{i=1}^{d_h} q_i k_i\Big)
+= \sum_{i=1}^{d_h} \mathbb{E}[q_i^2]\,\mathbb{E}[k_i^2] = d_h ,
+$$
+
+so raw scores have standard deviation $\sqrt{d_h}$ — at $d_h = 256$, typical
+scores of magnitude $\pm 16$. Pushed through a softmax, such logits produce
+nearly one-hot rows, and the softmax Jacobian
+$\mathrm{diag}(p) - p p^\top$ vanishes as $p$ approaches a vertex of the
+simplex: **saturated attention stops learning**. Dividing by $\sqrt{d_h}$
+restores unit variance. Both halves of this argument are checked
+*statistically* in `tests/test_attention.py::TestScaling`: scaled scores have
+sample variance $\approx 1$, and at $d_h = 256$ the unscaled softmax rows
+place $> 90\%$ of their mass on a single entry while the scaled rows stay
+spread out.
+
+### 9.3 Multi-head decomposition
+
+Rather than one attention over $d$ dimensions, split into $H$ heads of
+$d_h = d/H$ dimensions, run them in parallel, concatenate, and mix:
+
+$$
+\mathrm{MHSA}(Z) = \big[\mathrm{head}_1 \,\Vert\, \cdots \,\Vert\, \mathrm{head}_H\big] W_O^\top + b_O .
+$$
+
+Each head can realize a different attention pattern (one tracks the shape,
+another the background — visible in `docs/figures/attention_maps.png`).
+Parameter count: four $d \times d$ projections plus biases, $4(d^2 + d)$,
+*independent of* $H$ — heads partition the width, they don't add capacity.
+
+### 9.4 Permutation equivariance, proved
+
+Section 1 claimed attention has no notion of position. Precisely: for any
+permutation matrix $\Pi$,
+
+$$
+\mathrm{MHSA}(\Pi Z) = \Pi\, \mathrm{MHSA}(Z).
+$$
+
+*Proof.* The projections are per-token: $(\Pi Z) W^\top = \Pi (Z W^\top)$, so
+$Q' = \Pi Q$, $K' = \Pi K$, $V' = \Pi V$. The scores become
+$Q' K'^\top = \Pi Q K^\top \Pi^\top$. Softmax acts row-wise and a
+permutation only relabels rows and columns, so
+$\mathrm{softmax}(\Pi A \Pi^\top) = \Pi\, \mathrm{softmax}(A)\, \Pi^\top$.
+Then the output is
+$\Pi\, \mathrm{softmax}(A)\, \Pi^\top \Pi V = \Pi\, \mathrm{softmax}(A)\, V$,
+since $\Pi^\top \Pi = I$. The output projection is again per-token. $\blacksquare$
+
+`tests/test_attention.py::TestPermutationEquivariance` runs this proof
+numerically — and verifies that turning RoPE on *breaks* it, which is the
+entire point of positional information.
+
+---
+
+## 10. Rotary positional embeddings (RoPE)
+
+Section 5.6 proved that shifting a sinusoidal encoding by $k$ positions is a
+fixed block-diagonal rotation $R_k$. RoPE (Su et al. 2021) turns that
+observation into the mechanism itself: instead of *adding* a position vector
+to the token once at the input, **rotate the queries and keys inside every
+attention layer**, pair $j$ of the token at position $m$ by angle
+$\omega_j m$, with the same frequencies $\omega_j = \theta^{-2j/d_h}$ as
+section 5:
+
+$$
+q^{(m)} = R(m)\, q, \qquad k^{(n)} = R(n)\, k,
+\qquad
+R(m) = \mathrm{diag}\big(R^{(0)}(m), \dots\big),\quad
+R^{(j)}(m) = \begin{pmatrix} \cos \omega_j m & -\sin \omega_j m \\ \sin \omega_j m & \cos \omega_j m \end{pmatrix}.
+$$
+
+### 10.1 The relative-position theorem
+
+**Claim.** The attention score between a query at position $m$ and a key at
+position $n$ depends only on the offset $n - m$:
+
+$$
+\big\langle R(m)\, q,\; R(n)\, k \big\rangle = \big\langle q,\; R(n - m)\, k \big\rangle .
+$$
+
+*Proof.* Per $2\times 2$ block, plane rotations satisfy
+$R^{(j)}(m)^\top = R^{(j)}(-m)$ and compose additively,
+$R^{(j)}(a) R^{(j)}(b) = R^{(j)}(a + b)$. Hence
+
+$$
+\langle R(m) q, R(n) k \rangle
+= q^\top R(m)^\top R(n)\, k
+= q^\top R(n - m)\, k . \qquad \blacksquare
+$$
+
+Absolute position cancels *exactly* — not approximately, and without any
+learned table. Verified in
+`tests/test_positional.py::TestRope::test_scores_depend_only_on_relative_position`
+by placing identical $q, k$ at shifted positions and asserting equal scores.
+
+### 10.2 Properties
+
+* **Isometry.** Rotations preserve norms: $\|R(m) x\| = \|x\|$ exactly, so
+  RoPE never rescales the residual stream (`test_norm_preserved`).
+* **Identity at the origin.** $R(0) = I$: the [CLS] token at position 0 is
+  untouched (`test_position_zero_is_identity`).
+* **Additive vs. multiplicative.** The sinusoidal table of section 5 *adds*
+  absolute position to the token content once; attention must then learn to
+  extract relative offsets through the linear-map property of 5.6. RoPE
+  skips the extraction: relative position appears directly in the scores, at
+  every layer. The cost is that position is only visible to attention —
+  the MLPs never see it.
+
+In `MiniViT(positional_encoding="rotary")`, the additive table is disabled
+and every attention layer rotates its queries and keys
+(`tests/test_model.py::test_rotary_disables_additive_table`).
+
+---
+
+## 11. From tokens to a working model: MiniViT
+
+Sections 1–10 build and justify the tokenizer; this section closes the loop
+with the smallest model that can *demonstrate* the tokens are trainable
+([`model.py`](../vit_tokenizer/model.py)).
+
+### 11.1 The pre-norm encoder block
+
+$$
+\begin{aligned}
+Z' &= Z + \mathrm{MHSA}\big(\mathrm{LN}(Z)\big) \\
+Z'' &= Z' + \mathrm{MLP}\big(\mathrm{LN}(Z')\big),
+\qquad \mathrm{MLP}(x) = W_2\, \mathrm{GELU}(W_1 x + b_1) + b_2
+\end{aligned}
+$$
+
+with $W_1 \in \mathbb{R}^{4d \times d}$, $W_2 \in \mathbb{R}^{d \times 4d}$
+(the conventional expansion ratio of 4). The *pre*-norm placement — LayerNorm
+on the branch, never on the residual stream — means the identity path from
+the loss to any layer is exactly the identity:
+
+$$
+\frac{\partial Z''}{\partial Z} = I + (\text{branch terms}),
+$$
+
+so gradients reach early layers undiminished regardless of depth. The
+original post-norm transformer, $\mathrm{LN}(Z + \mathrm{Sublayer}(Z))$,
+rescales the stream at every block and needs learning-rate warmup to train;
+pre-norm (ViT's choice) does not.
+`tests/test_model.py::TestEncoderBlock::test_residual_path_exists` makes the
+identity path tangible: zero every weight and the block *is* the identity.
+
+### 11.2 Readout
+
+After $L$ blocks, the [CLS] state is normalized and classified:
+
+$$
+\hat{y} = W_{\text{head}}\; \mathrm{LN}\big(Z_L[0]\big) + b_{\text{head}} \in \mathbb{R}^{\text{classes}} .
+$$
+
+By the equivariance of section 9.4, position 0 is only special because the
+positional encoding *made* it special — one more reason the tokenizer's
+encoding step is load-bearing.
+
+### 11.3 Parameter count
+
+Per block: MHSA $4(d^2 + d)$, MLP $(4d^2 + 4d) + (4d^2 + d) = 8d^2 + 5d$, two
+LayerNorms $4d$ — about $12d^2$ for $d \gg 1$. The full model:
+
+$$
+\#\text{params} \approx \underbrace{12\, d^2 L}_{\text{blocks}}
++ \underbrace{d\,(CP^2 + 1)}_{\text{tokenizer (§3)}}
++ \underbrace{(N + 2)\, d}_{\text{[CLS] + learnable positions}}
++ \underbrace{d \cdot \text{classes}}_{\text{head}} .
+$$
+
+Sanity check at ViT-Base ($d = 768$, $L = 12$, $P = 16$, 1000 classes):
+$12 \cdot 12 \cdot 768^2 \approx 84.9\mathrm{M}$, plus $0.59\mathrm{M}$
+(tokenizer) $+ 0.15\mathrm{M}$ (positions) $+ 0.77\mathrm{M}$ (head)
+$\approx 86\mathrm{M}$ — the published figure.
+`tests/test_model.py::test_vit_base_parameter_count` instantiates exactly
+this configuration and counts.
+
+### 11.4 Evidence that it learns
+
+Two levels of proof, both runnable:
+
+* **Overfit test** (`tests/test_model.py::test_overfits_tiny_batch`): 150
+  Adam steps on 8 fixed samples must drive the cross-entropy below 0.05 and
+  classify all 8 correctly. A break anywhere in the gradient path — the PoC's
+  parameters-on-a-`Dataset` bug, an in-place op on the graph, a frozen buffer
+  that should be a parameter — fails this test.
+* **Generalization demo** (`examples/train_shapes.py`): a 355k-parameter
+  MiniViT reaches $\approx 96\%$ *held-out* accuracy on the synthetic shapes
+  task in about a minute on CPU. The attention overlays it produces
+  (`docs/figures/attention_maps.png`) show [CLS] attending to the shape —
+  the token pipeline carries the spatial information end to end.
+
+---
+
+## 12. References
 
 1. Vaswani et al., *Attention Is All You Need*, NeurIPS 2017 — § 3.5 defines the sinusoidal encoding. [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
 2. Dosovitskiy et al., *An Image is Worth 16x16 Words*, ICLR 2021 — the ViT paper. [arXiv:2010.11929](https://arxiv.org/abs/2010.11929)

@@ -170,3 +170,89 @@ class TestSinusoidal2D:
     def test_odd_d_model_raises(self):
         with pytest.raises(ValueError, match="even"):
             sinusoidal_positional_encoding_2d(4, 4, 33)
+
+
+class TestRope:
+    """Rotary embeddings (docs/MATH.md section 10): rope_rotate applies the
+    section-5.6 rotation matrices multiplicatively to token vectors."""
+
+    def test_shape_preserved(self):
+        from vit_tokenizer import rope_rotate
+
+        vectors = torch.randn(2, 4, 10, 32)  # (batch, heads, seq, head_dim)
+        positions = torch.arange(10)
+        assert rope_rotate(vectors, positions).shape == vectors.shape
+
+    def test_position_zero_is_identity(self):
+        from vit_tokenizer import rope_rotate
+
+        vectors = torch.randn(1, 5, 16)
+        rotated = rope_rotate(vectors, torch.zeros(5))
+        assert torch.allclose(rotated, vectors, atol=1e-6)
+
+    def test_norm_preserved(self):
+        """Rotations are isometries: every token keeps its norm exactly."""
+        from vit_tokenizer import rope_rotate
+
+        vectors = torch.randn(3, 20, 64)
+        rotated = rope_rotate(vectors, torch.arange(20))
+        assert torch.allclose(
+            rotated.norm(dim=-1), vectors.norm(dim=-1), atol=1e-4
+        )
+
+    def test_matches_explicit_rotation_matrix(self):
+        """rope_rotate at position m must equal multiplication by the
+        block-diagonal matrix of 2x2 rotations by omega_j * m."""
+        from vit_tokenizer import frequency_bands, rope_rotate
+
+        torch.manual_seed(0)
+        d_model, position = 16, 7
+        vector = torch.randn(d_model)
+        omega = frequency_bands(d_model)
+
+        rotation = torch.zeros(d_model, d_model)
+        for j, w in enumerate(omega):
+            c, s = torch.cos(w * position), torch.sin(w * position)
+            rotation[2 * j, 2 * j] = c
+            rotation[2 * j, 2 * j + 1] = -s
+            rotation[2 * j + 1, 2 * j] = s
+            rotation[2 * j + 1, 2 * j + 1] = c
+
+        rotated = rope_rotate(vector.view(1, 1, d_model), torch.tensor([position]))
+        assert torch.allclose(rotated.flatten(), rotation @ vector, atol=1e-5)
+
+    def test_scores_depend_only_on_relative_position(self):
+        """The defining property: <R(m) q, R(n) k> = <q, R(n-m) k>. Place the
+        same q and k at shifted positions; the dot product must not change."""
+        from vit_tokenizer import rope_rotate
+
+        torch.manual_seed(0)
+        d_model, seq_len = 32, 40
+        query = torch.randn(d_model)
+        key = torch.randn(d_model)
+        # Every token identical, so position is the only varying quantity.
+        queries = query.expand(seq_len, d_model)
+        keys = key.expand(seq_len, d_model)
+        positions = torch.arange(seq_len)
+        rotated_queries = rope_rotate(queries, positions)
+        rotated_keys = rope_rotate(keys, positions)
+
+        offset = 6
+        scores = [
+            rotated_queries[m] @ rotated_keys[m + offset]
+            for m in range(0, seq_len - offset, 7)
+        ]
+        for score in scores[1:]:
+            assert score.item() == pytest.approx(scores[0].item(), abs=1e-3)
+
+    def test_odd_width_raises(self):
+        from vit_tokenizer import rope_rotate
+
+        with pytest.raises(ValueError, match="pairs"):
+            rope_rotate(torch.randn(1, 4, 15), torch.arange(4))
+
+    def test_mismatched_positions_raise(self):
+        from vit_tokenizer import rope_rotate
+
+        with pytest.raises(ValueError, match="one entry per token"):
+            rope_rotate(torch.randn(1, 4, 16), torch.arange(5))

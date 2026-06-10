@@ -33,6 +33,7 @@ import torch
 
 __all__ = [
     "frequency_bands",
+    "rope_rotate",
     "sinusoidal_positional_encoding",
     "sinusoidal_positional_encoding_2d",
 ]
@@ -112,3 +113,59 @@ def sinusoidal_positional_encoding_2d(
         dim=-1,
     )
     return encoding.reshape(grid_h * grid_w, d_model)
+
+
+def rope_rotate(
+    vectors: torch.Tensor,
+    positions: torch.Tensor,
+    base: float = 10_000.0,
+) -> torch.Tensor:
+    """Rotary positional embedding (RoPE; Su et al. 2021).
+
+    Where the sinusoidal table *adds* position to the token once at the input,
+    RoPE *rotates* the query/key vectors inside every attention layer: the
+    pair ``(x[2j], x[2j+1])`` of the token at position ``m`` is rotated by the
+    angle ``omega_j * m``, with the same frequencies
+    ``omega_j = base^(-2j/d)`` as the additive encoding::
+
+        out[2j]   = x[2j] * cos(omega_j m) - x[2j+1] * sin(omega_j m)
+        out[2j+1] = x[2j] * sin(omega_j m) + x[2j+1] * cos(omega_j m)
+
+    This is exactly the block-rotation matrix of docs/MATH.md section 5.6
+    applied *multiplicatively*. Because rotations compose
+    (``R(m)^T R(n) = R(n - m)``), the attention score between a query at
+    position ``m`` and a key at position ``n`` satisfies
+
+        < R(m) q, R(n) k > = < q, R(n - m) k >
+
+    — it depends on the *relative* offset ``n - m`` only, never on absolute
+    position. Rotations are also isometries, so token norms are untouched.
+    Both facts are verified in ``tests/test_positional.py::TestRope``;
+    derivation in docs/MATH.md section 10.
+
+    Args:
+        vectors: ``(..., S, d)`` tensor (any leading batch/head axes) with
+            even last dimension ``d``.
+        positions: ``(S,)`` integer or float positions, one per token.
+        base: wavelength base shared with the sinusoidal encoding.
+
+    Returns:
+        Tensor of the same shape with each token rotated by its position.
+    """
+    d_model = vectors.shape[-1]
+    if d_model % 2 != 0:
+        raise ValueError(f"RoPE rotates dimension pairs; got odd width {d_model}")
+    if positions.dim() != 1 or positions.shape[0] != vectors.shape[-2]:
+        raise ValueError(
+            f"positions must be one-dimensional with one entry per token; got "
+            f"{tuple(positions.shape)} for {vectors.shape[-2]} tokens"
+        )
+    omega = frequency_bands(d_model, base).to(vectors.device)
+    angles = positions.to(vectors.dtype).unsqueeze(-1) * omega  # (S, d/2)
+    cos, sin = torch.cos(angles), torch.sin(angles)
+
+    even, odd = vectors[..., 0::2], vectors[..., 1::2]
+    rotated = torch.empty_like(vectors)
+    rotated[..., 0::2] = even * cos - odd * sin
+    rotated[..., 1::2] = even * sin + odd * cos
+    return rotated
