@@ -1,5 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
 
-__pycache__/image_tokenization.cpython-311.pyc
+# Environments
+.venv/
+venv/
+
+# Editors
 .vscode/settings.json
+.idea/
+
+# Scratch notes
 Plans.md
 outline.md
