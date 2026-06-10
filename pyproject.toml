@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vit-image-tokenizer"
+version = "1.0.0"
+description = "A tested, documented image tokenizer for Vision Transformers: patchify, project, [CLS], sinusoidal positions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Seth Linares" }]
+keywords = ["vision-transformer", "vit", "tokenizer", "patch-embedding", "positional-encoding"]
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.24",
+    "pillow>=9.0",
+    "matplotlib>=3.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["vit_tokenizer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
